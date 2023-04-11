@@ -51,22 +51,45 @@ export function doDatabaseStuff() {
   }
 }
 
-export async function getIngredientList(): Promise<string[]> {
+const pageLimit = 10;
+
+export async function getIngredientList(
+  pageNumber: number = 1
+): Promise<any[]> {
   await doDatabaseStuff();
 
   return new Promise((resolve, reject) => {
     const store = db
       .transaction(INGREDSTORE, "readonly")
       .objectStore(INGREDSTORE);
-    const keyReq = store.getAllKeys();
-    keyReq.onerror = (Event) => {
-      console.error(Event);
-      reject();
-    };
-    keyReq.onsuccess = (Event) => {
-      if (Event.target instanceof IDBRequest) {
-        resolve(Event.target.result);
+
+    const cursorReq = store.openCursor();
+    let retArr: any[] = [];
+    let cursorPosition = 0;
+    cursorReq.onsuccess = (event) => {
+      let cursor = event.target.result;
+      console.log("cursor", cursor);
+      if (cursor) {
+        if (cursorPosition < (pageNumber - 1) * pageLimit) {
+          // 이전 페이지 데이터는 skip
+          cursor.advance((pageNumber - 1) * pageLimit - cursorPosition);
+          cursorPosition = (pageNumber - 1) * pageLimit;
+        } else if (cursorPosition >= pageNumber * pageLimit) {
+          // 다음 페이지 데이터는 없음
+          return;
+        } else {
+          // 현재 페이지 데이터 보여주기
+          // do something with the data
+          retArr.push(cursor.value);
+          cursorPosition++;
+          cursor.continue();
+        }
+      } else {
+        resolve(retArr);
       }
+    };
+    cursorReq.onerror = (event) => {
+      reject(event.target.error);
     };
   });
 }
