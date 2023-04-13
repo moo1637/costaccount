@@ -5,7 +5,7 @@ import { Button } from "@mui/material";
 import Link from "next/link";
 
 export default function Ingredient() {
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState<any[]>([]);
   const [pageNumber, setPageNumber] = useState(1);
   const columns: GridColDef[] = [
     { field: "name", headerName: "이름", width: 80 },

@@ -67,7 +67,6 @@ export async function getIngredientList(
     let retArr: any[] = [];
     let cursorPosition = 0;
     cursorReq.onsuccess = (event) => {
-      console.log("event", event);
       if (event.target !== null && event.target instanceof IDBRequest) {
         if (event.target.result !== null) {
           let cursor = event.target.result;
