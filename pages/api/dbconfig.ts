@@ -67,29 +67,31 @@ export async function getIngredientList(
     let retArr: any[] = [];
     let cursorPosition = 0;
     cursorReq.onsuccess = (event) => {
-      let cursor = event.target.result;
-      console.log("cursor", cursor);
-      if (cursor) {
-        if (cursorPosition < (pageNumber - 1) * pageLimit) {
-          // 이전 페이지 데이터는 skip
-          cursor.advance((pageNumber - 1) * pageLimit - cursorPosition);
-          cursorPosition = (pageNumber - 1) * pageLimit;
-        } else if (cursorPosition >= pageNumber * pageLimit) {
-          // 다음 페이지 데이터는 없음
-          return;
+      console.log("event", event);
+      if (event.target != null && event.target instanceof IDBRequest) {
+        let cursor = event.target.result;
+        if (cursor) {
+          if (cursorPosition < (pageNumber - 1) * pageLimit) {
+            // 이전 페이지 데이터는 skip
+            cursor.advance((pageNumber - 1) * pageLimit - cursorPosition);
+            cursorPosition = (pageNumber - 1) * pageLimit;
+          } else if (cursorPosition >= pageNumber * pageLimit) {
+            // 다음 페이지 데이터는 없음
+            return;
+          } else {
+            // 현재 페이지 데이터 보여주기
+            // do something with the data
+            retArr.push(cursor.value);
+            cursorPosition++;
+            cursor.continue();
+          }
         } else {
-          // 현재 페이지 데이터 보여주기
-          // do something with the data
-          retArr.push(cursor.value);
-          cursorPosition++;
-          cursor.continue();
+          resolve(retArr);
         }
-      } else {
-        resolve(retArr);
       }
     };
     cursorReq.onerror = (event) => {
-      reject(event.target.error);
+      reject(event);
     };
   });
 }

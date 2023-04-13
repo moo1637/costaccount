@@ -13,15 +13,18 @@ export default function Ingredient() {
     { field: "weight", headerName: "중량", width: 80 },
   ];
   useEffect(() => {
+    console.log("?");
     getIngredientList(pageNumber).then((data) => {
-      console.log("data", data);
-
+      let id = 1;
+      data.map((record) => {
+        record.id = id;
+        id++;
+        return record;
+      });
       setRows(data);
     });
   }, [pageNumber]);
-  useEffect(() => {
-    console.log("rows", rows);
-  }, [rows]);
+
   return (
     <>
       <h1 style={{ marginBottom: 10 }}>재료 관리</h1>
