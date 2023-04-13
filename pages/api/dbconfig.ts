@@ -68,9 +68,9 @@ export async function getIngredientList(
     let cursorPosition = 0;
     cursorReq.onsuccess = (event) => {
       console.log("event", event);
-      if (event.target != null && event.target instanceof IDBRequest) {
-        let cursor = event.target.result;
-        if (cursor) {
+      if (event.target !== null && event.target instanceof IDBRequest) {
+        if (event.target.result !== null) {
+          let cursor = event.target.result;
           if (cursorPosition < (pageNumber - 1) * pageLimit) {
             // 이전 페이지 데이터는 skip
             cursor.advance((pageNumber - 1) * pageLimit - cursorPosition);
