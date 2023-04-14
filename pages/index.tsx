@@ -15,17 +15,18 @@ export default function Home() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        justifyContent: "center",
         "& button": { m: 1, width: "200px" },
       }}
     >
       <Link href="/ingredient">
         <Button variant="contained" size="large">
-          재료등록
+          재료관리
         </Button>
       </Link>
       <Link href="/recipe">
         <Button variant="contained" size="large">
-          레시피등록
+          레시피관리
         </Button>
       </Link>
       <Link href="/costCalculator">

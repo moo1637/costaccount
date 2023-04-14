@@ -1,54 +1,63 @@
-import { resolve } from "path";
+import { GridRowId } from "@mui/x-data-grid";
 
 const DBVERSION = 1;
 const INGREDSTORE = "ingredient";
 let db: IDBDatabase;
 
-export function doDatabaseStuff() {
-  try {
-    return new Promise<void>((resolve, reject) => {
-      if (!indexedDB) {
-        alert("지원하지 않는 브라우저 입니다.");
-        reject();
-      } else {
-        const dbReq = indexedDB.open("shop", DBVERSION);
+export type Ingredient = {
+  name: string;
+  price: number;
+  weight: number;
+};
+type response = {
+  success: boolean;
+  message: string;
+};
+export function doDatabaseStuff(): Promise<{
+  response: boolean;
+  message?: "string";
+}> {
+  return new Promise((resolve, reject) => {
+    if (db) {
+      resolve({ response: true });
+      return;
+    }
+    if (!indexedDB) {
+      reject({ response: false, message: "지원하지 않는 브라우저 입니다." });
+    } else {
+      const dbReq = indexedDB.open("shop", DBVERSION);
 
-        dbReq.onerror = (Event) => {
-          console.error("error", Event);
-          reject();
-        };
+      dbReq.onerror = (event) => {
+        reject({
+          response: false,
+          message: handleError((event.target as IDBRequest).error),
+        });
+      };
 
-        dbReq.onsuccess = (Event) => {
-          console.log("onsuccess", Event);
-          if (Event.target !== null) {
-            if (Event.target instanceof IDBOpenDBRequest) {
-              db = Event.target.result;
-              resolve();
-            }
+      dbReq.onsuccess = (event) => {
+        if (event.target instanceof IDBOpenDBRequest) {
+          db = event.target.result;
+          resolve({ response: true });
+        }
+      };
+
+      dbReq.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+        if (event.target instanceof IDBOpenDBRequest) {
+          db = event.target.result;
+          if (event.oldVersion < 1) {
+            db.createObjectStore(INGREDSTORE, {
+              keyPath: "id",
+              autoIncrement: true,
+            });
+            db.createObjectStore("recipe", {
+              keyPath: "id",
+              autoIncrement: true,
+            });
           }
-        };
-
-        dbReq.onupgradeneeded = (Event: IDBVersionChangeEvent) => {
-          console.log("onupgradeneeded", Event);
-          if (Event.target !== null) {
-            if (Event.target instanceof IDBOpenDBRequest) {
-              db = Event.target.result;
-              if (Event.oldVersion < 1) {
-                db.createObjectStore(INGREDSTORE, {
-                  keyPath: "name",
-                });
-                db.createObjectStore("recipe", {
-                  keyPath: "name",
-                });
-              }
-            }
-          }
-        };
-      }
-    });
-  } catch (e) {
-    return false;
-  }
+        }
+      };
+    }
+  });
 }
 
 const pageLimit = 10;
@@ -67,9 +76,9 @@ export async function getIngredientList(
     let retArr: any[] = [];
     let cursorPosition = 0;
     cursorReq.onsuccess = (event) => {
-      if (event.target !== null && event.target instanceof IDBRequest) {
-        if (event.target.result !== null) {
-          let cursor = event.target.result;
+      if (event.target instanceof IDBRequest) {
+        let cursor = event.target?.result;
+        if (cursor) {
           if (cursorPosition < (pageNumber - 1) * pageLimit) {
             // 이전 페이지 데이터는 skip
             cursor.advance((pageNumber - 1) * pageLimit - cursorPosition);
@@ -95,9 +104,7 @@ export async function getIngredientList(
   });
 }
 
-export async function getIngredient(
-  key: string
-): Promise<{ name: string; price: string; weight: string }> {
+export async function getIngredient(key: number): Promise<Ingredient> {
   await doDatabaseStuff();
 
   return new Promise((resolve, reject) => {
@@ -105,30 +112,73 @@ export async function getIngredient(
       .transaction(INGREDSTORE, "readonly")
       .objectStore(INGREDSTORE);
     const getReq = store.get(key);
-    getReq.onerror = (Event) => {
-      console.error(Event);
+    getReq.onerror = (event) => {
+      console.error(event);
       reject();
     };
-    getReq.onsuccess = (Event) => {
-      console.log("Event", Event);
-      if (Event.target instanceof IDBRequest) {
-        resolve(Event.target.result);
+    getReq.onsuccess = (event) => {
+      if (event.target instanceof IDBRequest) {
+        resolve(event.target.result);
       }
     };
   });
 }
 
-export async function addIngredient(obj: Object) {
+export async function addIngredient(
+  obj: Ingredient,
+  callback: (success: boolean, message: any) => void
+) {
   await doDatabaseStuff();
 
   const store = db
     .transaction(INGREDSTORE, "readwrite")
     .objectStore(INGREDSTORE);
   const addReq = store.add(obj);
-  addReq.onerror = (Event) => console.error(Event);
-  addReq.onsuccess = (Event) => console.log(Event);
+  addReq.onerror = (event) => {
+    console.log("event", event);
+    callback(false, handleError((event.target as IDBRequest).error));
+  };
+  addReq.onsuccess = (event) =>
+    callback(true, (event.target as IDBRequest).result);
 }
 
-export async function getDatabaseWrite() {
+export async function deleteIngredient(target: GridRowId[]): Promise<response> {
   await doDatabaseStuff();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(INGREDSTORE, "readwrite");
+    const store = tx.objectStore(INGREDSTORE);
+
+    target.forEach((key) => {
+      store.delete(key);
+    });
+
+    tx.oncomplete = (event) =>
+      resolve({ success: true, message: "완료되었습니다." });
+    tx.onerror = (event) =>
+      reject({
+        success: false,
+        message: handleError((event.target as IDBRequest).error),
+      });
+  });
+}
+
+function handleError(error: DOMException | null): string {
+  let message: string = "알 수 없는 오류가 발생하였습니다.";
+
+  switch (error?.name) {
+    case "ConstraintError":
+      message = "해당 키는 이미 존재합니다.";
+      break;
+    case "VersionError":
+      message = "인덱스 버전을 업그레이드하는 도중 에러가 발생하였습니다.";
+      break;
+    case "AbortError":
+      message = "트랜잭션이 중단되었습니다.";
+      break;
+    default:
+      break;
+  }
+
+  return message;
 }

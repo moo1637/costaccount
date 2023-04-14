@@ -1,22 +1,24 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import HomeIcon from "@mui/icons-material/Home";
-import AppBar from "@mui/material/AppBar";
+import { Home, RouteRounded, Undo } from "@mui/icons-material";
+import { IconButton } from "@mui/material";
 
 export default function NavBar() {
   const router = useRouter();
 
   return (
-    <nav
-      style={{
-        display: "flex",
-        flexDirection: "row",
-      }}
-    >
+    <nav>
       {router.pathname !== "/" ? (
-        <Link href="/">
-          <HomeIcon />
-        </Link>
+        <>
+          <IconButton color="primary" onClick={() => router.back()}>
+            <Undo fontSize="large" />
+          </IconButton>
+          <Link href="/">
+            <IconButton color="primary">
+              <Home fontSize="large" />
+            </IconButton>
+          </Link>
+        </>
       ) : (
         <></>
       )}
