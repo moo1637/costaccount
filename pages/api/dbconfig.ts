@@ -13,17 +13,17 @@ type response = {
   success: boolean;
   message: string;
 };
-export function doDatabaseStuff(): Promise<{
-  response: boolean;
-  message?: "string";
-}> {
+export function doDatabaseStuff(): Promise<response> {
   return new Promise((resolve, reject) => {
     if (db) {
-      resolve({ response: true });
+      resolve({
+        success: true,
+        message: "데이터베이스가 이미 연결되어있습니다.",
+      });
       return;
     }
     if (!indexedDB) {
-      reject({ response: false, message: "지원하지 않는 브라우저 입니다." });
+      reject({ success: false, message: "지원하지 않는 브라우저 입니다." });
     } else {
       const dbReq = indexedDB.open("shop", DBVERSION);
 
@@ -37,7 +37,10 @@ export function doDatabaseStuff(): Promise<{
       dbReq.onsuccess = (event) => {
         if (event.target instanceof IDBOpenDBRequest) {
           db = event.target.result;
-          resolve({ response: true });
+          resolve({
+            success: true,
+            message: "데이터베이스 연결을 성공하였습니다.",
+          });
         }
       };
 
@@ -60,11 +63,11 @@ export function doDatabaseStuff(): Promise<{
   });
 }
 
-const pageLimit = 10;
+const pageLimit = 1000;
 
 export async function getIngredientList(
   pageNumber: number = 1
-): Promise<any[]> {
+): Promise<Ingredient[]> {
   await doDatabaseStuff();
 
   return new Promise((resolve, reject) => {
@@ -124,22 +127,47 @@ export async function getIngredient(key: number): Promise<Ingredient> {
   });
 }
 
-export async function addIngredient(
-  obj: Ingredient,
-  callback: (success: boolean, message: any) => void
-) {
+//재료 등록
+export async function addIngredient(obj: Ingredient): Promise<response> {
   await doDatabaseStuff();
 
-  const store = db
-    .transaction(INGREDSTORE, "readwrite")
-    .objectStore(INGREDSTORE);
-  const addReq = store.add(obj);
-  addReq.onerror = (event) => {
-    console.log("event", event);
-    callback(false, handleError((event.target as IDBRequest).error));
-  };
-  addReq.onsuccess = (event) =>
-    callback(true, (event.target as IDBRequest).result);
+  return new Promise((resolve, reject) => {
+    const store = db
+      .transaction(INGREDSTORE, "readwrite")
+      .objectStore(INGREDSTORE);
+    const addReq = store.add(obj);
+    addReq.onerror = (event) =>
+      reject({
+        success: false,
+        message: handleError((event.target as IDBRequest).error),
+      });
+    addReq.onsuccess = (event) =>
+      resolve({ success: true, message: "완료되었습니다." });
+  });
+}
+
+//재료 수정
+export async function modifyIngredient(
+  obj: Ingredient,
+  key: number
+): Promise<response> {
+  await doDatabaseStuff();
+  return new Promise((resolve, reject) => {
+    const store = db
+      .transaction(INGREDSTORE, "readwrite")
+      .objectStore(INGREDSTORE);
+    console.log(obj, key);
+    const putReq = store.put({ ...obj, id: key });
+
+    putReq.onerror = (event) =>
+      reject({
+        success: false,
+        message: handleError((event.target as IDBRequest).error),
+      });
+
+    putReq.onsuccess = (event) =>
+      resolve({ success: true, message: "완료되었습니다." });
+  });
 }
 
 export async function deleteIngredient(target: GridRowId[]): Promise<response> {

@@ -1,27 +1,51 @@
-import { Alert, Box, Button, TextField } from "@mui/material";
+import { Alert, Box, Button, Snackbar, TextField } from "@mui/material";
 import React, {
   BaseSyntheticEvent,
   ChangeEventHandler,
   useEffect,
   useState,
 } from "react";
-import { Ingredient, addIngredient, getIngredient } from "../api/dbconfig";
+import {
+  Ingredient,
+  addIngredient,
+  getIngredient,
+  modifyIngredient,
+} from "../api/dbconfig";
 import { useRouter } from "next/router";
 import styles from "./ingredient.module.css";
 
 export default function Detail() {
-  const router = useRouter();
-  const isEditMode = router.query.new === "false"; // 재료 수정인지 여부
+  const [id, setId] = useState("0");
   const [name, setName] = useState<string>("");
   const [price, setPrice] = useState<number>(0);
   const [weight, setWeight] = useState<number>(0);
   const [showAlert, setShowAlert] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>();
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [message, setMessage] = useState("");
   const [originData, setOriginData] = useState<Ingredient>({
     name: "",
     price: 0,
     weight: 0,
   });
+  const router = useRouter();
+
+  useEffect(() => {
+    if (router.query.id) setId(router.query.id as string);
+  }, [router.query.id]);
+  useEffect(() => {
+    if (originData) {
+      initData();
+    }
+  }, [originData]);
+  useEffect(() => {
+    if (id !== "0") {
+      //기존데이터 수정
+      (async () => {
+        const data = await getIngredient(Number(id));
+        setOriginData(data);
+      })();
+    }
+  }, [id]);
   //등록&수정 이벤트
   const onSubmit = async (e: BaseSyntheticEvent) => {
     e.preventDefault();
@@ -32,43 +56,47 @@ export default function Detail() {
         price,
         weight,
       };
-      if (isEditMode) {
+      if (id !== "0") {
+        const response = await modifyIngredient(data, Number(router.query.id));
+        if (response.success) {
+          setOpenSnackbar(true);
+          setMessage(response.message);
+        } else {
+          // 실패 메세징 처리
+          setOpenSnackbar(true);
+          setMessage(response.message);
+        }
       } else {
-        addIngredient(data, (success, message) => {
-          if (success) {
-            setMessage("");
-            setShowAlert(true);
-            initData();
-          } else {
-            console.log(message);
-            setMessage(message);
-            setShowAlert(true);
-          }
-        });
+        const response = await addIngredient(data);
+        if (response.success) {
+          setOpenSnackbar(true);
+          setMessage(response.message);
+        } else {
+          // 실패 메세징 처리
+        }
       }
     }
   };
-  useEffect(() => {
-    if (isEditMode) {
-      //기존데이터 수정
-      (async () => {
-        const data = await getIngredient(Number(router.query.id));
-        setOriginData(data);
-      })();
-    }
-  }, []);
-  useEffect(() => {
-    initData();
-  }, [originData]);
-
   const initData = () => {
     setName(originData.name);
     setPrice(originData.price);
     setWeight(originData.weight);
   };
+  const handleClose = () => {
+    setOpenSnackbar(false);
+    setMessage("");
+  };
+
   return (
     <>
-      <h1 style={{ marginBottom: 10 }}>재료 {isEditMode ? "수정" : "등록"}</h1>
+      <h1 style={{ marginBottom: 10 }}>재료 {id !== "0" ? "수정" : "등록"}</h1>
+      <Snackbar
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        open={openSnackbar}
+        autoHideDuration={3000} // 3초 동안 보여줌
+        onClose={handleClose}
+        message={message}
+      />
       <Box
         component="form"
         onSubmit={onSubmit}
@@ -117,7 +145,7 @@ export default function Detail() {
         )}
         <div className={styles.buttonDiv}>
           <Button type="submit" variant="contained">
-            {isEditMode ? "수정" : "등록"}
+            {id !== "0" ? "수정" : "등록"}
           </Button>
           <Button color="inherit" variant="contained" onClick={initData}>
             초기화
