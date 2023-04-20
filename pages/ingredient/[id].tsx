@@ -6,10 +6,11 @@ import React, {
   useState,
 } from "react";
 import {
+  StoreType,
   Ingredient,
-  addIngredient,
-  getIngredient,
-  modifyIngredient,
+  addDBDataObject,
+  getDBDataObject,
+  modifyDBDataObject,
 } from "../api/dbconfig";
 import { useRouter } from "next/router";
 import styles from "./ingredient.module.css";
@@ -41,8 +42,8 @@ export default function Detail() {
     if (id !== "0") {
       //기존데이터 수정
       (async () => {
-        const data = await getIngredient(Number(id));
-        setOriginData(data);
+        const data = await getDBDataObject(StoreType.INGREDIENT, Number(id));
+        setOriginData(data as Ingredient);
       })();
     }
   }, [id]);
@@ -57,7 +58,11 @@ export default function Detail() {
         weight,
       };
       if (id !== "0") {
-        const response = await modifyIngredient(data, Number(router.query.id));
+        const response = await modifyDBDataObject(
+          StoreType.INGREDIENT,
+          data,
+          Number(router.query.id)
+        );
         if (response.success) {
           setOpenSnackbar(true);
           setMessage(response.message);
@@ -67,7 +72,7 @@ export default function Detail() {
           setMessage(response.message);
         }
       } else {
-        const response = await addIngredient(data);
+        const response = await addDBDataObject(StoreType.INGREDIENT, data);
         if (response.success) {
           setOpenSnackbar(true);
           setMessage(response.message);

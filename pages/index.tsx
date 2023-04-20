@@ -29,7 +29,7 @@ export default function Home() {
           레시피관리
         </Button>
       </Link>
-      <Link href="/costCalculator">
+      <Link href="/costcalculator">
         <Button variant="contained" size="large">
           원가계산
         </Button>

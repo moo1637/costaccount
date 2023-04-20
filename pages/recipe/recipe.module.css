@@ -1,0 +1,9 @@
+.buttonDiv {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  padding-top: 10px;
+}
+.buttonDiv > * {
+  margin-right: 5px;
+}

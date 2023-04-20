@@ -8,8 +8,9 @@ import {
 } from "@mui/x-data-grid";
 import {
   Ingredient,
-  deleteIngredient,
-  getIngredientList,
+  StoreType,
+  deleteDBDataList,
+  getDBDataList,
 } from "../api/dbconfig";
 import { Box, Button, Snackbar, TextField } from "@mui/material";
 import Link from "next/link";
@@ -26,7 +27,6 @@ export default function IngredientList() {
     items: [],
   });
   const [name, setName] = useState<string>("");
-  const apiRef = useRef<any>(null);
   const columns: GridColDef[] = [
     { field: "name", headerName: "이름", width: 80 },
     { field: "price", headerName: "가격", width: 80 },
@@ -46,8 +46,8 @@ export default function IngredientList() {
     },
   ];
   const getGridData = async () => {
-    const data = await getIngredientList(pageNumber);
-    setRows(data);
+    const data = await getDBDataList(StoreType.INGREDIENT, pageNumber);
+    setRows(data as Ingredient[]);
   };
   useEffect(() => {
     getGridData();
@@ -64,7 +64,10 @@ export default function IngredientList() {
     }
     if (confirm(`선택한 ${selectedRows.length}건을 삭제하시겠습니까?`)) {
       (async () => {
-        const response = await deleteIngredient(selectedRows);
+        const response = await deleteDBDataList(
+          StoreType.INGREDIENT,
+          selectedRows
+        );
         if (response.success) {
           setOpenSnackbar(true);
           setMessage(response.message);
@@ -127,7 +130,6 @@ export default function IngredientList() {
       </Box>
       <div style={{ height: "50vh" }}>
         <DataGrid
-          apiRef={apiRef}
           rows={rows}
           columns={columns}
           autoPageSize

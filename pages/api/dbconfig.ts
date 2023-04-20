@@ -1,13 +1,29 @@
 import { GridRowId } from "@mui/x-data-grid";
 
 const DBVERSION = 1;
-const INGREDSTORE = "ingredient";
+export enum StoreType {
+  INGREDIENT = "ingredient",
+  RECIPE = "recipe",
+}
 let db: IDBDatabase;
+type AllowedStoreType = StoreType.INGREDIENT | StoreType.RECIPE;
 
 export type Ingredient = {
+  id?: number; // 자동생성 값으로 있을수도/없을수도 있음
   name: string;
   price: number;
   weight: number;
+};
+export type Step = {
+  id: number; // 재료 id
+  weight: number;
+  description: string;
+};
+export type Recipe = {
+  name: string;
+  description: string;
+  cnt: number;
+  step: Step[];
 };
 type response = {
   success: boolean;
@@ -48,11 +64,11 @@ export function doDatabaseStuff(): Promise<response> {
         if (event.target instanceof IDBOpenDBRequest) {
           db = event.target.result;
           if (event.oldVersion < 1) {
-            db.createObjectStore(INGREDSTORE, {
+            db.createObjectStore(StoreType.INGREDIENT, {
               keyPath: "id",
               autoIncrement: true,
             });
-            db.createObjectStore("recipe", {
+            db.createObjectStore(StoreType.RECIPE, {
               keyPath: "id",
               autoIncrement: true,
             });
@@ -65,15 +81,14 @@ export function doDatabaseStuff(): Promise<response> {
 
 const pageLimit = 1000;
 
-export async function getIngredientList(
+export async function getDBDataList(
+  objStore: AllowedStoreType,
   pageNumber: number = 1
-): Promise<Ingredient[]> {
+): Promise<Ingredient[] | Recipe[]> {
   await doDatabaseStuff();
 
   return new Promise((resolve, reject) => {
-    const store = db
-      .transaction(INGREDSTORE, "readonly")
-      .objectStore(INGREDSTORE);
+    const store = db.transaction(objStore, "readonly").objectStore(objStore);
 
     const cursorReq = store.openCursor();
     let retArr: any[] = [];
@@ -107,13 +122,14 @@ export async function getIngredientList(
   });
 }
 
-export async function getIngredient(key: number): Promise<Ingredient> {
+export async function getDBDataObject(
+  objStore: AllowedStoreType,
+  key: number
+): Promise<Ingredient | Recipe> {
   await doDatabaseStuff();
 
   return new Promise((resolve, reject) => {
-    const store = db
-      .transaction(INGREDSTORE, "readonly")
-      .objectStore(INGREDSTORE);
+    const store = db.transaction(objStore, "readonly").objectStore(objStore);
     const getReq = store.get(key);
     getReq.onerror = (event) => {
       console.error(event);
@@ -128,13 +144,14 @@ export async function getIngredient(key: number): Promise<Ingredient> {
 }
 
 //재료 등록
-export async function addIngredient(obj: Ingredient): Promise<response> {
+export async function addDBDataObject(
+  objStore: AllowedStoreType,
+  obj: Ingredient | Recipe
+): Promise<response> {
   await doDatabaseStuff();
 
   return new Promise((resolve, reject) => {
-    const store = db
-      .transaction(INGREDSTORE, "readwrite")
-      .objectStore(INGREDSTORE);
+    const store = db.transaction(objStore, "readwrite").objectStore(objStore);
     const addReq = store.add(obj);
     addReq.onerror = (event) =>
       reject({
@@ -147,15 +164,14 @@ export async function addIngredient(obj: Ingredient): Promise<response> {
 }
 
 //재료 수정
-export async function modifyIngredient(
-  obj: Ingredient,
+export async function modifyDBDataObject(
+  objStore: AllowedStoreType,
+  obj: Ingredient | Recipe,
   key: number
 ): Promise<response> {
   await doDatabaseStuff();
   return new Promise((resolve, reject) => {
-    const store = db
-      .transaction(INGREDSTORE, "readwrite")
-      .objectStore(INGREDSTORE);
+    const store = db.transaction(objStore, "readwrite").objectStore(objStore);
     console.log(obj, key);
     const putReq = store.put({ ...obj, id: key });
 
@@ -170,12 +186,15 @@ export async function modifyIngredient(
   });
 }
 
-export async function deleteIngredient(target: GridRowId[]): Promise<response> {
+export async function deleteDBDataList(
+  objStore: AllowedStoreType,
+  target: GridRowId[]
+): Promise<response> {
   await doDatabaseStuff();
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(INGREDSTORE, "readwrite");
-    const store = tx.objectStore(INGREDSTORE);
+    const tx = db.transaction(objStore, "readwrite");
+    const store = tx.objectStore(objStore);
 
     target.forEach((key) => {
       store.delete(key);
