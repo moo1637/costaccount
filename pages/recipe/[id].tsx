@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { BaseSyntheticEvent, useEffect, useState } from "react";
+import { BaseSyntheticEvent, Fragment, useEffect, useState } from "react";
 import {
   StoreType,
   Ingredient,
@@ -56,6 +56,7 @@ export default function Detail() {
       setIngredient(data as Ingredient[]);
     })();
   }, []);
+
   const onSubmit = (e: BaseSyntheticEvent) => {
     e.preventDefault();
 
@@ -76,23 +77,43 @@ export default function Detail() {
   };
 
   const handleChange = (
-    index: number,
-    field: string,
+    stepNo: number,
+    field: "id" | "weight" | "description",
     value: string | number
   ) => {
-    console.log(value);
-    console.log(typeof value);
     const newStep = [...step];
-    newStep[index][field] = value;
+    if (
+      (field === "id" && typeof value === "number") ||
+      (field === "weight" && typeof value === "number")
+    ) {
+      (newStep.find((r) => r.stepNo === stepNo) as Step)[field] = value;
+    } else if (field === "description" && typeof value === "string") {
+      (newStep.find((r) => r.stepNo === stepNo) as Step)[field] = value;
+    }
     setStep(newStep);
   };
   const handleDelete = (index: number) => {
     const newStep = [...step];
     newStep.splice(index, 1);
-    setStep(newStep);
+    setStep(
+      newStep.map((r, i) => {
+        r.stepNo = i + 1;
+        return r;
+      })
+    );
   };
   const handleAddRow = () => {
-    setStep([...step, { id: 0, weight: 0, description: "" }]);
+    const newStep = step.map((r, i) => {
+      r.stepNo = i + 1;
+      return r;
+    });
+    newStep.push({
+      stepNo: newStep.length + 1,
+      id: 0,
+      weight: 0,
+      description: "",
+    });
+    setStep(newStep);
   };
 
   return (
@@ -154,14 +175,14 @@ export default function Detail() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {step.map((row, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{index + 1}</TableCell>
+                {step.map((row) => (
+                  <TableRow key={row.stepNo}>
+                    <TableCell>{row.stepNo}</TableCell>
                     <TableCell align="center">
                       <Select
                         value={row.id}
                         onChange={(e) => {
-                          handleChange(index, "id", e.target.value);
+                          handleChange(row.stepNo, "id", e.target.value);
                         }}
                         size="small"
                       >
@@ -181,7 +202,7 @@ export default function Detail() {
                         value={row.weight}
                         onChange={(e) =>
                           handleChange(
-                            index,
+                            row.stepNo,
                             "weight",
                             parseFloat(e.target.value)
                           )
@@ -193,7 +214,11 @@ export default function Detail() {
                       <TextField
                         value={row.description}
                         onChange={(e) =>
-                          handleChange(index, "description", e.target.value)
+                          handleChange(
+                            row.stepNo,
+                            "description",
+                            e.target.value
+                          )
                         }
                         size="small"
                       />
@@ -201,7 +226,7 @@ export default function Detail() {
                     <TableCell align="center">
                       <Button
                         variant="outlined"
-                        onClick={() => handleDelete(index)}
+                        onClick={() => handleDelete(row.stepNo)}
                       >
                         삭제
                       </Button>
@@ -238,10 +263,10 @@ export default function Detail() {
                         r.weight
                       ).toFixed(2);
                       return (
-                        <>
+                        <Fragment key={i}>
                           {i + 1}.{item.name} : {r.weight}(g/ml/개) 가격 :{" "}
                           {price} <br />
-                        </>
+                        </Fragment>
                       );
                     })}
                   의 재료가 필요합니다.

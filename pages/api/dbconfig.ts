@@ -15,6 +15,7 @@ export type Ingredient = {
   weight: number;
 };
 export type Step = {
+  stepNo: number;
   id: number; // 재료 id
   weight: number;
   description: string;
